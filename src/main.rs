@@ -7,12 +7,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
     // let secret = generate_secret();
-    let secret = "GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL"; // NOTE: testing
+    let secbase = "GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL"; // NOTE: testing
     // otpauth://totp/Rustapp?secret=GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL&issuer=berna.dev
-    let secbase = base32::decode(base32::Alphabet::RFC4648 {padding: false}, secret).unwrap();
 
-    // Step 1: Create hmac value
-    // Get time
+    let secret = base32::decode(base32::Alphabet::RFC4648 {padding: false}, secbase).unwrap();
+    let counter = get_time();
+
+    let code = get_code(secret, counter);
+    println!("Code: {}", code);
+}
+
+fn get_time() -> [u8; 8] {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)
         .expect("Time went backwards!");
     let mut time = now.as_millis() / 30000;
@@ -23,26 +28,31 @@ fn main() {
         time = time >> 8;
     }
 
+    buffer
+}
+
+fn create_hash(secret: Vec<u8>, counter: [u8; 8]) -> u32 {
     type HmacSha1 = Hmac<Sha1>;
-    let mut mac = HmacSha1::new_varkey(&secbase)
+    let mut mac = HmacSha1::new_varkey(&secret)
         .expect("HMAC can take key of any size");
 
-    mac.input(&buffer);
+    mac.input(&counter);
     
     let result = mac.result();
     let hmac_value = result.code();
 
-    // Step 2: Dynamic truncation
+    // Dynamic truncation
     let offset = (hmac_value[19] & 0xf) as usize;
-    let truncated_hash = ((hmac_value[offset] & 0x7f) as u32) << 24
+    ((hmac_value[offset] & 0x7f) as u32) << 24
         | ((hmac_value[offset + 1] & 0xff) as u32) << 16
         | ((hmac_value[offset + 2] & 0xff) as u32) << 8
-        | ((hmac_value[offset + 3] & 0xff) as u32);
-    
-    // Step 3: Compute hotp value
+        | ((hmac_value[offset + 3] & 0xff) as u32)
+}
+
+fn get_code(secret: Vec<u8>, counter: [u8; 8]) -> String {
+    let truncated_hash = create_hash(secret, counter);
     let hotp_value = truncated_hash % 10_u32.pow(6);
-    let code = hotp_value.to_string().pad(6, '0', Alignment::Right, true);
-    println!("Code: {}", code);
+    hotp_value.to_string().pad(6, '0', Alignment::Right, true)
 }
 
 fn generate_secret() -> String {
