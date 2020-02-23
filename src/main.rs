@@ -6,11 +6,13 @@ use pad::{PadStr, Alignment};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
-    // let secret = generate_secret();
-    let secbase = "GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL"; // NOTE: testing
+    //let secbase = generate_secret();
+    let secbase = String::from("GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL"); // NOTE: testing
     // otpauth://totp/Rustapp?secret=GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL&issuer=berna.dev
 
-    let secret = base32::decode(base32::Alphabet::RFC4648 {padding: false}, secbase).unwrap();
+    let secret = base32::decode(base32::Alphabet::RFC4648 {padding: false}, &secbase)
+        .expect("Invalid secret key!");
+
     let counter = get_time();
 
     let code = get_code(secret, counter);
@@ -52,6 +54,7 @@ fn create_hash(secret: Vec<u8>, counter: [u8; 8]) -> u32 {
 fn get_code(secret: Vec<u8>, counter: [u8; 8]) -> String {
     let truncated_hash = create_hash(secret, counter);
     let hotp_value = truncated_hash % 10_u32.pow(6);
+    
     hotp_value.to_string().pad(6, '0', Alignment::Right, true)
 }
 
