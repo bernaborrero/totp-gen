@@ -1,3 +1,7 @@
+extern crate dotenv;
+
+use dotenv::dotenv;
+use std::env;
 use rand::Rng;
 use base32;
 use sha1::Sha1;
@@ -6,10 +10,7 @@ use pad::{PadStr, Alignment};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 fn main() {
-    //let secbase = generate_secret();
-    let secbase = String::from("GYVPZJQQ4VBK7K64AILB2NF3BZAG7CLL"); // NOTE: testing
-    // TODO: recover key from config file
-
+    let secbase = get_secret();
     let secret = base32::decode(base32::Alphabet::RFC4648 {padding: false}, &secbase)
         .expect("Invalid secret key!");
 
@@ -17,6 +18,14 @@ fn main() {
 
     let code = get_code(secret, counter);
     println!("Code: {}", code);
+}
+
+fn get_secret() -> String {
+    dotenv().ok();
+
+    // TODO: allow multiple secrets
+    env::var("TOTP_APP_SECRET")
+        .expect("Failed retrieving secret!")
 }
 
 fn get_time(time_since_epoch: Option<Duration>) -> [u8; 8] {
@@ -64,6 +73,7 @@ fn get_code(secret: Vec<u8>, counter: [u8; 8]) -> String {
     hotp_value.to_string().pad(6, '0', Alignment::Right, true)
 }
 
+#[allow(dead_code)]
 fn generate_secret() -> String {
     let alphabet = base32::Alphabet::RFC4648{padding: false};
     let random_buffer = rand::thread_rng().gen::<[u8; 20]>();
